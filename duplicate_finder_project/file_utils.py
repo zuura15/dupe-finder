@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import logging
 from hash_utils import calculate_hash
+import sys
 
 def find_files(directory, extensions):
     """Find all files in a directory with the given extensions."""
@@ -12,12 +13,15 @@ def find_files(directory, extensions):
     logging.debug(f"Found files: {files}")
     return files
 
+delimiter = '|'  # Configurable delimiter
 def store_hash(file_path, file_hash):
     """Store a single file hash in a persistent storage."""
     logging.debug(f"Storing hash for file: {file_path}")
     try:
         with open('file_hashes.txt', 'a') as f:
-            f.write(f"{file_path}:{file_hash}\n")
+            hash_file_path = 'file_hashes.txt'  # Configurable file path
+            with open(hash_file_path, 'a') as f:                
+                f.write(f"{file_path}{delimiter}{file_hash}\n")
     except Exception as e:
         logging.error(f"Error storing hash for {file_path}: {e}")
 
@@ -29,10 +33,12 @@ def load_hashes():
         if os.path.exists('file_hashes.txt'):
             with open('file_hashes.txt', 'r') as f:
                 for line in f:
-                    file_path, file_hash = line.strip().split(':')
+                    file_path, file_hash = line.strip().split(delimiter)
                     hash_map[file_path] = file_hash
     except Exception as e:
         logging.error(f"Error loading hashes: {e}")
+        sys.exit()  # Stop program execution
+        raise SystemExit
     logging.debug(f"Loaded hashes: {hash_map}")
     return hash_map
 

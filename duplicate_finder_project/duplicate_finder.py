@@ -4,18 +4,34 @@ from collections import defaultdict
 import argparse
 from datetime import datetime
 from file_utils import find_files, get_file_hash, load_hashes
+import pytz
+from datetime import datetime
 
 # Define a custom logging formatter to use PST timezone
 class PSTFormatter(logging.Formatter):
+    converter = pytz.timezone('America/Los_Angeles').localize
+
     def formatTime(self, record, datefmt=None):
-        pst = pytz.timezone('America/Los_Angeles')
-        record.created = datetime.fromtimestamp(record.created, pst)
-        return super().formatTime(record, datefmt)
+        dt = self.converter(datetime.fromtimestamp(record.created))
+        if datefmt:
+            s = dt.strftime(datefmt)
+        else:
+            try:
+                s = dt.isoformat(timespec='milliseconds')
+            except TypeError:
+                s = dt.isoformat()
+        return s
 
 # Configure logging with PST timezone
 logging.basicConfig(filename='duplicate_finder.log', level=logging.DEBUG, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
-logging.getLogger().handlers[0].setFormatter(PSTFormatter('%Y-%m-%d %H:%M:%S'))
+#logging.getLogger().handlers[0].setFormatter(PSTFormatter("%Y-%m-%d %H:%M:%S"))
+
+# Add console handler
+# Add console handler
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+logging.getLogger().addHandler(console_handler)
 
 # Supported video and image file extensions
 VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.m4v', '.wmv', '.flv', '.mpeg', '.mpg']
@@ -27,7 +43,11 @@ def check_for_duplicates(files, existing_hashes):
     hash_map = defaultdict(list)
     duplicates = []
 
-    for file_path in files:
+    total_files = len(files)
+    logging.debug(f"Total files to process: {total_files}")
+
+    for i, file_path in enumerate(files, start=1):
+        logging.debug(f"Processing file {i} of {total_files}: {file_path}")
         file_hash = get_file_hash(file_path, existing_hashes)
 
         if file_hash:
